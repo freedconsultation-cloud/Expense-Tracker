@@ -44,6 +44,12 @@ export default function Home() {
     setTransactions((ts) => ts.filter((t) => t.id !== id));
   }
 
+  async function clearAll() {
+    if (!confirm("Delete all transactions? This cannot be undone.")) return;
+    await fetch("/api/transactions", { method: "DELETE" });
+    setTransactions([]);
+  }
+
   return (
     <div style={{ minHeight: "100vh", background: "var(--background)" }}>
       {/* Nav */}
@@ -77,6 +83,15 @@ export default function Home() {
             <span className="hidden sm:inline">Add Transaction</span>
             <span className="sm:hidden">Add</span>
           </button>
+          {transactions.length > 0 && (
+            <button
+              onClick={clearAll}
+              className="text-xs px-3 py-1.5 rounded transition-opacity hover:opacity-70 hidden sm:inline-flex"
+              style={{ background: "var(--red-bg)", color: "var(--red)", border: "1px solid var(--red)" }}
+            >
+              Clear all
+            </button>
+          )}
           <a href="https://freedprojects.vercel.app" className="text-xs hover:opacity-70 transition-opacity hidden sm:inline" style={{ color: "var(--text-muted)" }}>
             ← Portfolio
           </a>

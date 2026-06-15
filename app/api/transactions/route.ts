@@ -13,6 +13,16 @@ export async function GET() {
   }
 }
 
+export async function DELETE() {
+  try {
+    await prisma.transaction.deleteMany();
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: "Failed to delete transactions" }, { status: 500 });
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
