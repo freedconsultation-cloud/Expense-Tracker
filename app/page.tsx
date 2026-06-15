@@ -1,65 +1,104 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
+import SummaryCards from "./components/SummaryCards";
+import TransactionList from "./components/TransactionList";
+
+const Charts = dynamic(() => import("./components/Charts"), { ssr: false });
+const AddTransaction = dynamic(() => import("./components/AddTransaction"), { ssr: false });
+const PdfImport = dynamic(() => import("./components/PdfImport"), { ssr: false });
+
+interface Transaction {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  category: string;
+  type: string;
+  source: string;
+}
 
 export default function Home() {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+
+  const loadTransactions = useCallback(async () => {
+    try {
+      const res = await fetch("/api/transactions");
+      const data = await res.json();
+      setTransactions(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadTransactions(); }, [loadTransactions]);
+
+  async function deleteTransaction(id: string) {
+    await fetch(`/api/transactions/${id}`, { method: "DELETE" });
+    setTransactions((ts) => ts.filter((t) => t.id !== id));
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div style={{ minHeight: "100vh", background: "var(--background)" }}>
+      {/* Nav */}
+      <nav
+        className="flex items-center justify-between px-4 sm:px-6 py-3 sticky top-0 z-10"
+        style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}
+      >
+        <div className="flex items-center gap-3">
+          <span className="font-bold font-mono text-sm" style={{ color: "var(--accent)" }}>{"</>"}</span>
+          <span className="text-sm font-semibold hidden sm:inline" style={{ color: "var(--foreground)" }}>Expense Tracker</span>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowImport(true)}
+            className="text-xs px-3 py-1.5 rounded transition-opacity hover:opacity-80 flex items-center gap-1.5"
+            style={{ background: "var(--surface-2)", color: "var(--text-muted)", border: "1px solid var(--border)" }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+            <span className="hidden sm:inline">Import PDF</span>
+            <span className="sm:hidden">PDF</span>
+          </button>
+          <button
+            onClick={() => setShowAdd(true)}
+            className="text-xs px-3 py-1.5 rounded font-semibold transition-opacity hover:opacity-80 flex items-center gap-1.5"
+            style={{ background: "var(--accent)", color: "#fff" }}
           >
-            Documentation
+            <span>+</span>
+            <span className="hidden sm:inline">Add Transaction</span>
+            <span className="sm:hidden">Add</span>
+          </button>
+          <a href="https://freedprojects.vercel.app" className="text-xs hover:opacity-70 transition-opacity hidden sm:inline" style={{ color: "var(--text-muted)" }}>
+            ← Portfolio
           </a>
         </div>
-      </main>
+      </nav>
+
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 flex flex-col gap-6">
+        {loading ? (
+          <div className="flex items-center justify-center py-24">
+            <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "var(--border)", borderTopColor: "var(--accent)" }} />
+          </div>
+        ) : (
+          <>
+            <SummaryCards transactions={transactions} />
+            <Charts transactions={transactions.map((t) => ({ ...t, date: t.date.slice(0, 10) }))} />
+            <TransactionList transactions={transactions} onDelete={deleteTransaction} />
+          </>
+        )}
+      </div>
+
+      {showAdd && <AddTransaction onClose={() => setShowAdd(false)} onSave={loadTransactions} />}
+      {showImport && <PdfImport onClose={() => setShowImport(false)} onImport={loadTransactions} />}
     </div>
   );
 }
