@@ -14,6 +14,8 @@ interface Transaction {
 
 interface Props {
   transactions: Transaction[];
+  yearTransactions: Transaction[];
+  selectedYear: number;
 }
 
 const COLORS = [
@@ -21,11 +23,13 @@ const COLORS = [
   "#ffa657", "#79c0ff", "#56d364", "#ff7b72", "#a5d6ff",
 ];
 
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 
-export default function Charts({ transactions }: Props) {
-  // Category breakdown (expenses only)
+export default function Charts({ transactions, yearTransactions, selectedYear }: Props) {
+  // Category breakdown (expenses only) — uses view-filtered transactions
   const catMap: Record<string, number> = {};
   transactions
     .filter((t) => t.type === "expense")
@@ -36,22 +40,16 @@ export default function Charts({ transactions }: Props) {
     .map(([name, value]) => ({ name, value: Math.round(value * 100) / 100 }))
     .sort((a, b) => b.value - a.value);
 
-  // Monthly income vs expenses
-  const monthMap: Record<string, { income: number; expenses: number }> = {};
-  transactions.forEach((t) => {
-    const month = t.date.slice(0, 7); // "YYYY-MM"
-    if (!monthMap[month]) monthMap[month] = { income: 0, expenses: 0 };
-    if (t.type === "income") monthMap[month].income += t.amount;
-    else monthMap[month].expenses += Math.abs(t.amount);
+  // All 12 months of the selected year
+  const barData = MONTH_NAMES.map((name, i) => {
+    const ms = `${selectedYear}-${String(i + 1).padStart(2, "0")}`;
+    const monthTxs = yearTransactions.filter((t) => t.date.slice(0, 7) === ms);
+    return {
+      month: name,
+      Income: Math.round(monthTxs.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0) * 100) / 100,
+      Expenses: Math.round(monthTxs.filter((t) => t.type === "expense").reduce((s, t) => s + Math.abs(t.amount), 0) * 100) / 100,
+    };
   });
-  const barData = Object.entries(monthMap)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(-6)
-    .map(([month, vals]) => ({
-      month: new Date(month + "-01").toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
-      Income: Math.round(vals.income * 100) / 100,
-      Expenses: Math.round(vals.expenses * 100) / 100,
-    }));
 
   const cardStyle = {
     background: "var(--surface)",
@@ -60,7 +58,7 @@ export default function Charts({ transactions }: Props) {
     padding: "16px",
   };
 
-  if (transactions.length === 0) return null;
+  if (transactions.length === 0 && yearTransactions.length === 0) return null;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -101,18 +99,18 @@ export default function Charts({ transactions }: Props) {
         )}
       </div>
 
-      {/* Monthly bar */}
+      {/* Annual bar chart — all 12 months */}
       <div style={cardStyle}>
         <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "var(--accent)" }}>
-          Monthly Overview
+          {selectedYear} Monthly Overview
         </p>
-        {barData.length === 0 ? (
-          <p className="text-xs text-center py-8" style={{ color: "var(--text-muted)" }}>No monthly data</p>
+        {yearTransactions.length === 0 ? (
+          <p className="text-xs text-center py-8" style={{ color: "var(--text-muted)" }}>No data for {selectedYear}</p>
         ) : (
           <ResponsiveContainer width="100%" height={196}>
-            <BarChart data={barData} barGap={4}>
+            <BarChart data={barData} barGap={2}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 10, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
               <BarTooltip
                 contentStyle={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
